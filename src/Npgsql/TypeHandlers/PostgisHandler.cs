@@ -38,7 +38,8 @@ namespace Npgsql.TypeHandlers
         [CanBeNull]
         protected readonly ByteaHandler _byteaHandler;
 
-        public PostgisHandler() => new ByteaHandler();
+        public PostgisHandler() 
+            => _byteaHandler = new ByteaHandler();
 
         #region ByteHandler
 
