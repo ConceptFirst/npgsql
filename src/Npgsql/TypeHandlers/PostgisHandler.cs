@@ -203,5 +203,163 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion Read
+
+        #region Write
+
+        // Template methods for decoding approprate types for writing
+        protected abstract Coordinate2D decodePoint(T geom);
+        protected abstract Coordinate2D[] decodeLineString(T geom);
+        protected abstract Coordinate2D[][] decodePolygon(T geom);
+        protected abstract Coordinate2D[] decodeMultiPoint(T geom);
+        protected abstract Coordinate2D[][] decodeMultiLineString(T geom);
+        protected abstract Coordinate2D[][][] decodeMultiPolygon(T geom);
+        protected abstract T[] decodeCollection(T geom);
+
+        public override async Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            // Common header
+            if (value.SRID == 0)
+            {
+                if (buf.WriteSpaceLeft < 5)
+                    await buf.Flush(async);
+                buf.WriteByte(0); // We choose to ouput only XDR structure
+                buf.WriteInt32((int)value.Identifier);
+            }
+            else
+            {
+                if (buf.WriteSpaceLeft < 9)
+                    await buf.Flush(async);
+                buf.WriteByte(0);
+                buf.WriteInt32((int)((uint)value.Identifier | (uint)EwkbModifiers.HasSRID));
+                buf.WriteInt32((int)value.SRID);
+            }
+
+            switch (value.Identifier)
+            {
+            case WkbIdentifier.Point:
+                if (buf.WriteSpaceLeft < 16)
+                    await buf.Flush(async);
+                var p = decodePoint(value);
+                buf.WriteDouble(p.X);
+                buf.WriteDouble(p.Y);
+                return;
+
+            case WkbIdentifier.LineString:
+                var l = decodeLineString(value);
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async);
+                buf.WriteInt32(l.Length);
+                for (var ipts = 0; ipts < l.Length; ipts++)
+                {
+                    if (buf.WriteSpaceLeft < 16)
+                        await buf.Flush(async);
+                    buf.WriteDouble(l[ipts].X);
+                    buf.WriteDouble(l[ipts].Y);
+                }
+                return;
+
+                case WkbIdentifier.Polygon:
+                    var pol = decodePolygon(value);
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(pol.Length);
+                    for (var irng = 0; irng < pol.Length; irng++)
+                    {
+                        if (buf.WriteSpaceLeft < 4)
+                            await buf.Flush(async);
+                        buf.WriteInt32(pol[irng].Length);
+                        for (var ipts = 0; ipts < pol[irng].Length; ipts++)
+                        {
+                            if (buf.WriteSpaceLeft < 16)
+                                await buf.Flush(async);
+                            buf.WriteDouble(pol[irng][ipts].X);
+                            buf.WriteDouble(pol[irng][ipts].Y);
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.MultiPoint:
+                    var mp = decodeMultiPoint(value);
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(mp.Length);
+                    for (var ipts = 0; ipts < mp.Length; ipts++)
+                    {
+                        if (buf.WriteSpaceLeft < 21)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.Point);
+                        buf.WriteDouble(mp[ipts].X);
+                        buf.WriteDouble(mp[ipts].Y);
+                    }
+                    return;
+
+                case WkbIdentifier.MultiLineString:
+                    var ml = decodeMultiLineString(value);
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(ml.Length);
+                    for (var irng = 0; irng < ml.Length; irng++)
+                    {
+                        if (buf.WriteSpaceLeft < 9)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.LineString);
+                        buf.WriteInt32(ml[irng].Length);
+                        for (var ipts = 0; ipts < ml[irng].Length; ipts++)
+                        {
+                            if (buf.WriteSpaceLeft < 16)
+                                await buf.Flush(async);
+                            buf.WriteDouble(ml[irng][ipts].X);
+                            buf.WriteDouble(ml[irng][ipts].Y);
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.MultiPolygon:
+                    var mpl = decodeMultiPolygon(value);
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(mpl.Length);
+                    for (var ipol = 0; ipol < mpl.Length; ipol++)
+                    {
+                        if (buf.WriteSpaceLeft < 9)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.Polygon);
+                        buf.WriteInt32(mpl[ipol].Length);
+                        for (var irng = 0; irng < mpl[ipol].Length; irng++)
+                        {
+                            if (buf.WriteSpaceLeft < 4)
+                                await buf.Flush(async);
+                            buf.WriteInt32(mpl[ipol][irng].Length);
+                            for (var ipts = 0; ipts < mpl[ipol][irng].Length; ipts++)
+                            {
+                                if (buf.WriteSpaceLeft < 16)
+                                    await buf.Flush(async);
+                                buf.WriteDouble(mpl[ipol][irng][ipts].X);
+                                buf.WriteDouble(mpl[ipol][irng][ipts].Y);
+                            }
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.GeometryCollection:
+                    var coll = decodeCollection(value);
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(coll.Length);
+
+                    foreach (var x in coll)
+                        await Write(x, buf, lengthCache, null, async);
+                    return;
+
+                default:
+                    throw new InvalidOperationException("Unknown Postgis identifier.");
+            }
+        }
+
+        #endregion Write
+
     }
 }

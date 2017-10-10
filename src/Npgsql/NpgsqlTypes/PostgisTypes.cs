@@ -112,7 +112,8 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisPoint : PostgisGeometry, IEquatable<PostgisPoint>
     {
-        Coordinate2D _coord;
+        readonly Coordinate2D _coord;
+        internal Coordinate2D Coord => _coord;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.Point;
         protected override int GetLenHelper() => 16;
@@ -144,6 +145,7 @@ namespace NpgsqlTypes
     public class PostgisLineString : PostgisGeometry, IEquatable<PostgisLineString>, IEnumerable<Coordinate2D>
     {
         readonly Coordinate2D[] _points;
+        internal Coordinate2D[] Points => _points;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.LineString;
         protected override int GetLenHelper() => 4 + _points.Length * 16;
@@ -203,6 +205,7 @@ namespace NpgsqlTypes
     public class PostgisPolygon : PostgisGeometry, IEquatable<PostgisPolygon>, IEnumerable<IEnumerable<Coordinate2D>>
     {
         readonly Coordinate2D[][] _rings;
+        internal Coordinate2D[][] Rings => _rings;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.Polygon;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 16;
@@ -270,6 +273,7 @@ namespace NpgsqlTypes
     public class PostgisMultiPoint : PostgisGeometry, IEquatable<PostgisMultiPoint>, IEnumerable<Coordinate2D>
     {
         readonly Coordinate2D[] _points;
+        internal Coordinate2D[] Points => _points;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPoint;
 
@@ -335,6 +339,7 @@ namespace NpgsqlTypes
         IEquatable<PostgisMultiLineString>, IEnumerable<PostgisLineString>
     {
         readonly PostgisLineString[] _lineStrings;
+        internal Coordinate2D[][] Points => _lineStrings.Select(ls => ls.Points).ToArray();
 
         internal PostgisMultiLineString(Coordinate2D[][] pointArray)
         {
@@ -410,6 +415,7 @@ namespace NpgsqlTypes
     public class PostgisMultiPolygon : PostgisGeometry, IEquatable<PostgisMultiPolygon>, IEnumerable<PostgisPolygon>
     {
         readonly PostgisPolygon[] _polygons;
+        internal Coordinate2D[][][] Points => _polygons.Select(p => p.Rings).ToArray();
 
         public IEnumerator<PostgisPolygon> GetEnumerator() => ((IEnumerable<PostgisPolygon>)_polygons).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -478,6 +484,7 @@ namespace NpgsqlTypes
     public class PostgisGeometryCollection : PostgisGeometry, IEquatable<PostgisGeometryCollection>, IEnumerable<PostgisGeometry>
     {
         readonly PostgisGeometry[] _geometries;
+        internal PostgisGeometry[] Geometries => _geometries;
 
         public PostgisGeometry this[int index] => _geometries[index];
 
