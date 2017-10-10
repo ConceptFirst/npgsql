@@ -33,15 +33,12 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     // Base class to share code between geometry and geography classes
-    abstract class PostgisHandler<T> : NpgsqlTypeHandler<T>, INpgsqlTypeHandler<byte[]>
+    abstract class PostgisHandler<T> : NpgsqlTypeHandler<T>, INpgsqlTypeHandler<byte[]> where T: PostgisBaseType
     {
         [CanBeNull]
         protected readonly ByteaHandler _byteaHandler;
 
-        public PostgisHandler()
-        {
-            _byteaHandler = new ByteaHandler();
-        }
+        public PostgisHandler() => new ByteaHandler();
 
         #region ByteHandler
 
@@ -70,9 +67,6 @@ namespace Npgsql.TypeHandlers
         protected abstract T newMultiLineString(Coordinate2D[][] rings);
         protected abstract T newMultiPolygon(Coordinate2D[][][] pols);
         protected abstract T newCollection(T[] postGisTypes);
-
-        // Template method for updating SRID
-        protected abstract void setSRID(T geom, uint srid);
 
         protected async ValueTask<T> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
         {
@@ -203,7 +197,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
-            setSRID(geom, srid);
+            geom.SRID = srid;
             return geom;
         }
 

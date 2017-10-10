@@ -77,17 +77,15 @@ namespace NpgsqlTypes
             => !Equals(left, right);
     }
 
-    /// <summary>
-    /// Represents an Postgis feature.
-    /// </summary>
-    public abstract class PostgisGeometry
+    // Abstract type used by both Geometry and Geography to hold Identifier and SRID
+    public abstract class PostgisBaseType
     {
         /// <summary>
         /// returns the binary length of the data structure without header.
         /// </summary>
         /// <returns></returns>
         protected abstract int GetLenHelper();
-        internal abstract WkbIdentifier Identifier { get;}
+        internal abstract WkbIdentifier Identifier { get; }
 
         internal int GetLen(bool includeSRID)
         {
@@ -101,8 +99,13 @@ namespace NpgsqlTypes
         /// <summary>
         /// The Spatial Reference System Identifier of the geometry (0 if unspecified).
         /// </summary>
-        public uint SRID { get; set; }
+        public uint SRID { get; set; } // TODO: remove
     }
+
+    /// <summary>
+    /// Represents an Postgis feature.
+    /// </summary>
+    public abstract class PostgisGeometry: PostgisBaseType {}
 
     /// <summary>
     /// Represents an Postgis 2D Point

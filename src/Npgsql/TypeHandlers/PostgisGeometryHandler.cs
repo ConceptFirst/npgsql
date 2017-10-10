@@ -63,8 +63,6 @@ namespace Npgsql.TypeHandlers
         protected override PostgisGeometry newMultiPolygon(Coordinate2D[][][] pols) => new PostgisMultiPolygon(pols);
         protected override PostgisGeometry newCollection(PostgisGeometry[] postGisTypes) => new PostgisGeometryCollection(postGisTypes);
 
-        protected override void setSRID(PostgisGeometry geom, uint srid) => geom.SRID = srid;
-
         #endregion Template Methods
 
         #region Read concrete types
